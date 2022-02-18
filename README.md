@@ -1,4 +1,4 @@
-# Better Partial
+# Better partial function application in Python
 
 I find `functools.partial` unintuitive so I coded up a better version.
 
@@ -22,6 +22,7 @@ h(2)  # (1, 2, 3)
 g = f(_, _, _, c=10)
 g(1,2,3)  # (1, 2, 3, 10)
 
+# Can mix and match
 g = f(_, 0, _, c=10)
 g(1,1)  # (1, 0, 1, 10)
 
