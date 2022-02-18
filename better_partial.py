@@ -1,10 +1,10 @@
-class UnSupplied:
+class Unsupplied:
   pass
 
 class AllPositionalsUnsupplied:
   pass 
 
-_ = UnSupplied()
+_ = Unsupplied()
 
 ___ = AllPositionalsUnsupplied()
 
