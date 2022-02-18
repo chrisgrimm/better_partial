@@ -4,10 +4,13 @@ from inspect import signature
 class UnSupplied:
   pass
 
+class AllPositionalsUnsupplied:
+  pass 
+
 _ = UnSupplied()
 
+
 def partial(fn):
-  @functools.wraps(fn)
   def g(*partial_args, **partial_kwargs):
     unsupplied_arg_positions = [i for i, arg in enumerate(partial_args) if arg is _]
     unsupplied_kwargs = {key: value for key, value in partial_kwargs.items() if value is _}
