@@ -1,3 +1,5 @@
+import functools
+from inspect import signature
 
 class UnSupplied:
   pass
@@ -5,16 +7,17 @@ class UnSupplied:
 _ = UnSupplied()
 
 def partial(fn):
+  @functools.wraps(fn)
   def g(*partial_args, **partial_kwargs):
-    missing_arg_positions = [i for i, arg in enumerate(partial_args) if arg is _]
-    missing_kwargs = {key: value for key, value in partial_kwargs.items() if value is _}
-    if len(missing_arg_positions) == 0 and len(missing_kwargs) == 0:
+    unsupplied_arg_positions = [i for i, arg in enumerate(partial_args) if arg is _]
+    unsupplied_kwargs = {key: value for key, value in partial_kwargs.items() if value is _}
+    if len(unsupplied_arg_positions) == 0 and len(unsupplied_kwargs) == 0:
       return fn(*partial_args, **partial_kwargs)
     @partial
     def h(*args, **kwargs):
       nonlocal partial_args
       partial_args = list(partial_args)
-      for i, arg in zip(missing_arg_positions, args):
+      for i, arg in zip(unsupplied_arg_positions, args):
         partial_args[i] = arg
       for key, value in kwargs.items():
         partial_kwargs[key] = value
