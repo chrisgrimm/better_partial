@@ -1,4 +1,4 @@
-# Better Partial
+# Better partial function application in Python
 
 I find `functools.partial` unintuitive so I coded up a better version.
 
