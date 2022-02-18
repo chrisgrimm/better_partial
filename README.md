@@ -35,22 +35,3 @@ g(1,1)  # (1, 0, 1, 10)
 g = f(1, 2, 3, c=_)
 g(c=10)  # (1, 2, 3, 10)
 ```
-
-
-I think `functools.partial` behaves unintuitively when you use it with functions with positional arguments. Here's an example:
-
-```python
-import functools
-
-def f(x, y, z):
-  return x, y, z
- 
-g = functools.partial(f, y=2)
-g(1, 2)
-```
-
-Results in
-
-```python
-TypeError: f() got multiple values for argument 'y'
-```
