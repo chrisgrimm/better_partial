@@ -1,4 +1,3 @@
-import functools
 from inspect import signature
 
 class UnSupplied:
