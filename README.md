@@ -1,6 +1,6 @@
 # Better Partial
 
-I find `functools.partial` unintuitive so I wrote a better version.
+I find `functools.partial` unintuitive so I coded up a better version.
 
 ```python
 from better_partial import partial, _
