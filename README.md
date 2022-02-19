@@ -2,6 +2,12 @@
 
 I find `functools.partial` unintuitive so I coded up a better version.
 
+Install with:
+
+```
+pip install better-partial
+```
+
 ```python
 from better_partial import partial, _, ___
 
