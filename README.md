@@ -31,7 +31,7 @@ g = f(bp._, bp._, bp._, c=10)
 g(1,2,3)  # (1, 2, 3, 10)
 
 # Alternatively to omit all positional arguments, you can use
-g = f(bp.___, c=10)
+g = f(..., c=10)
 g(1,2,3)  # (1, 2, 3, 10)
 
 # Can mix and match
