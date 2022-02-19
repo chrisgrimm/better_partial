@@ -64,15 +64,18 @@ def partial(fn):
 
     @partial
     def h(*args, **kwargs):
-      nonlocal partial_args, partial_kwargs, all_unsupplied
-      partial_args = list(args) if all_unsupplied else list(partial_args)
-      for i, arg in zip(unsupplied_arg_positions, args):
-        partial_args[i] = arg
+      nonlocal partial_args, partial_kwargs, all_unsupplied, unsupplied_arg_positions 
+      _partial_args = list(partial_args).copy()
+      _partial_kwargs = partial_kwargs.copy()
+      _unsupplied_arg_positions = unsupplied_arg_positions.copy()
+      _partial_args = list(args) if all_unsupplied else list(_partial_args)
+      for i, arg in zip(_unsupplied_arg_positions, args):
+        _partial_args[i] = arg
       for key, value in kwargs.items():
-        partial_kwargs[key] = value
-      partial_args, partial_kwargs = _reinsert_kwargs(fn, partial_args, partial_kwargs)
-      partial_args = tuple(partial_args)
-      return fn(*partial_args, **partial_kwargs)
+        _partial_kwargs[key] = value
+      _partial_args, _partial_kwargs = _reinsert_kwargs(fn, _partial_args, _partial_kwargs)
+      _partial_args = tuple(_partial_args)
+      return fn(*_partial_args, **_partial_kwargs)
     h.__signature__ = new_sig 
     h.__wrapped__.__signature__ = new_sig 
     return h
@@ -80,4 +83,18 @@ def partial(fn):
     g.__wrapped__.__signature__ = signature(f)
   return g
 
+
+if __name__ == '__main__':
+  @partial 
+  def f(x, y, z):
+    return x, y, z
   
+  print(signature(f))
+  g = f(..., y=2)
+  print(signature(g))
+  # print(g(1, 3))
+  print(signature(g))
+
+  h = g(..., z=3)
+  print(signature(h))
+  print(h(1))
