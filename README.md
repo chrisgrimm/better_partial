@@ -34,6 +34,12 @@ g(1,2,3)  # (1, 2, 3, 10)
 g = f(..., c=10)
 g(1,2,3)  # (1, 2, 3, 10)
 
+# You can also specify positional arguments using keyword arguments
+g = f(..., y=2)
+h = g(..., x=1)
+h(3)  # (1, 2, 3, 4)
+
+
 # Can mix and match
 g = f(bp._, 0, bp._, c=10)
 g(1,1)  # (1, 0, 1, 10)
