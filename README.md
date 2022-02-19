@@ -36,7 +36,8 @@ g(1,2,3)  # (1, 2, 3, 10)
 
 # You can also specify positional arguments using keyword arguments
 g = f(..., y=2)
-g(1, 3)  # (1, 2, 3, 4)
+h = g(..., x=1)
+h(3)  # (1, 2, 3, 4)
 
 
 # Can mix and match
