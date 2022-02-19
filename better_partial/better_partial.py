@@ -1,17 +1,12 @@
 class Unsupplied:
   pass
 
-class AllPositionalsUnsupplied:
-  pass 
-
 _ = Unsupplied()
-
-___ = AllPositionalsUnsupplied()
 
 def partial(fn):
   def g(*partial_args, **partial_kwargs):
     all_unsupplied = False
-    if any(arg is ___ for arg in partial_args):
+    if any(arg is Ellipsis for arg in partial_args):
       assert len(partial_args) == 1
       all_unsupplied = True
     
