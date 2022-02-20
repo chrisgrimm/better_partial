@@ -66,3 +66,13 @@ g(0, 0, 0) == f(7, 0, 5, 0, 0) == f(7, bp._, 5, bp._, bp._)(0, 0, 0)  # --> True
 ```
 
 `better_partial` lets you use the `...` sentenel to indicate that you _only_ want to specify the values of what follows.
+
+An easy way to appreciate the flexibility and power of the `partial` operator is to see the variety of ways you can evaluate functions with it. Using the definition of `f` from above, all of the following lines are equivalent:
+
+```python
+f(1,2,3,4,5)
+f(bp._, 2, bp._, 4, bp._)(1, 3, 5)
+f(..., b=2, d=4)(1, 3, 5)
+f(..., b=2, d=4)(1, bp._, 5)(3)
+f(..., b=2, d=4)(..., c=3)(1, 5)
+```
