@@ -22,7 +22,7 @@ On the surface nothing really changes. `some_operation` behaves just like a norm
 some_operation(1, 2, 3)  # --> (1, 2, 3, 4)
 ```
 
-but under the hood my partial decorator is working all kinds of magic. Imagine you need to pass a function of `x` to some other part of your codebase and `some_operation`, with a particular setting of `p1 = 10` and `p2 = 20`, fits the bill. In order to make this work, you'd have to wrap `some_operation` like this:
+but under the hood my `partial` decorator is working all kinds of magic. Imagine you need to pass a function of `x` to some other part of your codebase and `some_operation`, with a particular setting of `p1 = 10` and `p2 = 20`, fits the bill. In order to make this work, you'd have to wrap `some_operation` like this:
 
 ```python
 func = lambda x: some_operation(x, 10, 20)
@@ -52,7 +52,7 @@ g(1, 3, 5)  # --> 1 + 0 + 3 + 0 + 5
 ```
 
 The functions produced by these partial applications also support further partial application. Consider using the `g` from above again:
-```
+```python
 h = g(1, bp._, bp._)
 h(3, 5)  # --> 1 + 0 + 3 + 0 + 5
 ```
