@@ -19,7 +19,7 @@ def some_operation(x, p1, p2):
 On the surface nothing really changes. `some_operation` behaves just like a normal function when you pass it values
 
 ```python
-some_operation(1, 2, 3)  # --> 6
+some_operation(1, 2, 3)  # --> 9
 ```
 
 but under the hood my `partial` decorator is working all kinds of magic. Imagine you need to pass a function of `x` to some other part of your codebase and `some_operation`, with a particular setting of `p1 = 10` and `p2 = 20`, fits the bill. In order to make this work, you'd have to wrap `some_operation` like this:
