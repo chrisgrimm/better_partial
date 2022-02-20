@@ -13,7 +13,7 @@ import better_partial as bp
 
 @bp.partial
 def some_operation(x, p1, p2):
-  return (x + parameter_1) * parameter_2
+  return (x + p1) * p2
 ```
 
 On the surface nothing really changes. `some_operation` behaves just like a normal function when you pass it values
