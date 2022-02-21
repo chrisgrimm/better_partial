@@ -65,7 +65,7 @@ g(0, 0, 0)  # --> 7 + 0 + 5 + 0 + 0
 g(0, 0, 0) == f(7, 0, 5, 0, 0) == f(7, bp._, 5, bp._, bp._)(0, 0, 0)  # --> True
 ```
 
-`better_partial` lets you use the `...` sentenel to indicate that you _only_ want to specify the values of what follows.
+`better_partial` lets you use the `...` sentinel to indicate that you _only_ want to specify the values of what follows.
 
 An easy way to appreciate the flexibility and power of the `partial` operator is to see the variety of ways you can evaluate functions with it. Using the definition of `f` from above, all of the following lines are equivalent:
 
