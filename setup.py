@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="better_partial",
-    version="1.0.5",
+    version="1.0.6",
     author="Christopher Grimm",
     author_email="cgrimm1994@gmail.com",
     description="A more intuitive way to partially apply functions in Python.",

@@ -1,100 +1,207 @@
-from inspect import signature, Parameter
+import inspect
 from functools import wraps 
-class Unsupplied:
-  pass
+from inspect import Parameter
+from typing import NamedTuple, Union, Tuple, Dict, Any, List
+from enum import Enum
 
-_ = Unsupplied()
 
-def _reinsert_kwargs(fn, args, kwargs):
-  params = signature(fn).parameters
-  param_position_mapping = {name: i for i, (name, param) in enumerate(params.items())
-                            if param.default == Parameter.empty}
-  
-  # get all the kwargs that have positions make a new_kwargs dict that doesnt include them
-  new_kwargs = {} 
-  position_to_kwarg= {}
-  for kw, arg in kwargs.items():
-    if kw in param_position_mapping:
-      position = param_position_mapping[kw]
-      position_to_kwarg[position] = arg
+class FillingMode(Enum):
+  NOT_FILLED = 0
+  PLACEHOLDER = 1 
+  FILLED_BY_DEFAULT = 2
+  FILLED = 3
+
+
+class Placeholder:
+  pass 
+
+
+_ = Placeholder()
+
+
+Binding = Dict[str, Union[int, str, Tuple[int, str]]]
+Filling = Dict[str, Tuple[FillingMode, Any]]
+
+
+def create_binding(sig: inspect.Signature) -> Binding:
+  param_to_accessor = {}
+  for pos, (name, param) in enumerate(sig.parameters.items()):
+    if param.kind == Parameter.POSITIONAL_ONLY:
+      param_to_accessor[name] = pos
+    elif param.kind == Parameter.KEYWORD_ONLY:
+      param_to_accessor[name] = name
     else:
-      new_kwargs[kw] = arg
-  
-  # make a new list of arguments by inserting positional kwargs
-  new_args = []
-  arg_pos = 0
-  for i in range(len(args) + len(position_to_kwarg)):
-    if i in position_to_kwarg:
-      new_args.append(position_to_kwarg[i])
-    else:
-      new_args.append(args[arg_pos])
-      arg_pos += 1
-  return new_args, new_kwargs
+      param_to_accessor[name] = (pos, name)
+  return param_to_accessor
 
-def _get_partial_signature(fn, partial_args, partial_kwargs):
-  sig = signature(fn)
-  params = list(sig.parameters.items())
-  # remove args that are specified by partial_kwargs
+
+def create_filling(sig: inspect.Signature, binding: Binding) -> Filling:
+  filling = {}
+  for name in binding:
+    if sig.parameters[name].default != inspect._empty:
+      filling[name] = (FillingMode.FILLED_BY_DEFAULT, sig.parameters[name].default)
+    else:
+      filling[name] = (FillingMode.NOT_FILLED, None)
+  return filling
+
+
+def update_filling(old_filling: Filling, binding: Binding, args: List[Any], kwargs: Dict[str, Any]) -> Filling:
+  filling = old_filling.copy()
+
+  position_to_params = {}
+  for param, accessor in binding.items():
+    if isinstance(accessor, int):
+      position_to_params[accessor] = param
+    elif isinstance(accessor, tuple):
+      position_to_params[accessor[0]] = param
   
-  params = [(name, param) for name, param in params if partial_kwargs.get(name, _) is _]
-  if partial_args[0] is Ellipsis:
-    # if ... then we're done.
-    pass
-  else:
-    assert len(partial_args) == len(params)
-    params = [(name, param) for partial_arg, (name, param) in zip(partial_args, params)
-              if partial_arg is _]
-  return sig.replace(parameters=[param for name, param in params])
-   
-def partial(fn):
-  @wraps(fn)
+  for name, arg in kwargs.items():
+    accessor = binding[name]
+    if isinstance(accessor, int):
+      raise Exception(f'Cannot fill position only argument "{name}" with keyword.')
+    if filling[name][0] == FillingMode.FILLED:
+      raise Exception(f'Argument "{name}" already filled.')
+    if arg is _:
+      filling[name] = (FillingMode.PLACEHOLDER, None)
+    else:
+      filling[name] = (FillingMode.FILLED, arg)
+    
+  for pos, arg in enumerate(args):
+    if pos not in position_to_params:
+      raise Exception(f'Function does not have argument with position {pos}.')
+    name = position_to_params[pos]
+    accessor = binding[name]
+    if isinstance(accessor, str):
+      raise Exception(f'Cannot fill keyword only argument "{name}" with positional argument.')
+    if filling[name][0] == FillingMode.FILLED:
+      raise Exception(f'Argument "{name}" already filled.')
+    if arg is _:
+      filling[name] = (FillingMode.PLACEHOLDER, None)
+    else:
+      filling[name] = (FillingMode.FILLED, arg)
+  return filling
+
+
+def raise_if_missing_argument(filling: Filling) -> bool:
+  missing_args = []
+  for name, (filling_mode, val) in filling.items():
+    if filling_mode == FillingMode.NOT_FILLED:
+      missing_args.append(name)
+  if missing_args:  
+    missing_args_string = ', '.join(f"{arg}" for arg in missing_args)
+    raise Exception(f'Missing arguments: {missing_args_string}.')
+
+
+def mark_not_filled_as_placeholders(old_filling: Filling) -> Filling:
+  filling = {}
+  for name, (filling_mode, val) in old_filling.items():
+    if filling_mode == FillingMode.NOT_FILLED:
+      filling[name] = (FillingMode.PLACEHOLDER, None)
+    else:
+      filling[name] = (filling_mode, val)
+  return filling
+
+
+def is_filling_complete(filling: Filling) -> bool:
+  for name, (filling_mode, val) in filling.items():
+    if filling_mode == FillingMode.PLACEHOLDER: 
+      return False
+  return True
+
+
+def filling_to_args_kwargs(filling: Filling, binding: Binding) -> Tuple[List[Any], Dict[str, Any]]:
+  positions_and_args = []
+  kwargs = {}
+  missing_args = []
+  for name, (filling_mode, val) in filling.items():
+    if filling_mode == FillingMode.PLACEHOLDER:
+      missing_args.append(name)      
+    if isinstance(binding[name], str):
+      kwargs[name] = val
+    elif isinstance(binding[name], tuple):
+      positions_and_args.append((binding[name][0], val))
+    else:
+      positions_and_args.append((binding[name], val))
+  args = [arg for pos, arg in sorted(positions_and_args, key=lambda x: x[0])]
+  if missing_args:
+    missing_args_string = ', '.join(f"{arg}" for arg in missing_args)
+    raise Exception(f'Cannot construct args / kwargs. Missing arguments: {missing_args_string}.')
+
+  return args, kwargs
+
+
+def create_partial_signature(signature: inspect.Signature, binding: Binding, filling: Filling) -> inspect.Signature:  
+  positional_only_with_positions = []
+  for name, accessor in binding.items():
+    if isinstance(accessor, int):
+      positional_only_with_positions.append((accessor, name))
+  positional_only = [name for pos, name in sorted(positional_only_with_positions, key=lambda x: x[0])]
+
+  positional_or_kw_with_positions = []
+  for name, accessor in binding.items():
+    if isinstance(accessor, tuple):
+      positional_or_kw_with_positions.append((accessor[0], name))
+  positional_or_kw = [name for pos, name in sorted(positional_or_kw_with_positions, key=lambda x: x[0])]
+
+  kw_only = []
+  for name, accessor in binding.items():
+    if isinstance(accessor, str):
+      kw_only.append(name)
+  
+  def _make_parameter_and_append(name, kind):
+    if filling[name][0] == FillingMode.PLACEHOLDER:
+      parameters.append(Parameter(name, kind))
+    elif filling[name][0] == FillingMode.FILLED_BY_DEFAULT:
+      parameters.append(Parameter(name, kind, default=signature.parameters[name].default))
+
+  parameters = []
+  for name in positional_only:
+    _make_parameter_and_append(name, Parameter.POSITIONAL_ONLY)
+  for name in positional_or_kw:
+    _make_parameter_and_append(name, Parameter.POSITIONAL_OR_KEYWORD)
+  for name in kw_only:
+    _make_parameter_and_append(name, Parameter.KEYWORD_ONLY)
+  return inspect.Signature(parameters)
+
+
+def partial(f):
+  outer_sig = inspect.signature(f)
+
+  for param in outer_sig.parameters.values():
+    if param.kind == Parameter.VAR_KEYWORD or param.kind == Parameter.VAR_POSITIONAL:
+      raise Exception('Better-Partial doesnt handle functions with variable positional or keyword arguments yet.')
+    
+  @wraps(f)
   def g(*partial_args, **partial_kwargs):
-    all_unsupplied = False
-    if any(arg is Ellipsis for arg in partial_args):
-      assert len(partial_args) == 1
-      all_unsupplied = True
+    outer_binding = create_binding(outer_sig)
+    outer_filling = create_filling(outer_sig, outer_binding)
     
-    
-    unsupplied_arg_positions = [i for i, arg in enumerate(partial_args) if arg is _]
-    unsupplied_kwargs = {key: value for key, value in partial_kwargs.items() if value is _}
-    if len(unsupplied_arg_positions) == 0 and len(unsupplied_kwargs) == 0 and (not all_unsupplied):
-      return fn(*partial_args, **partial_kwargs)
-    
-    new_sig = _get_partial_signature(fn, partial_args, partial_kwargs)
+    ellipsis_count = sum(arg == Ellipsis for arg in partial_args)
+    if ellipsis_count > 1:
+      raise Exception('Only one Ellipsis can be in args.')
+    if ellipsis_count == 1:
+      if partial_args[-1] != Ellipsis:
+        raise Exception('Ellipsis must be the last positional argument.')
 
-    @partial
-    def h(*args, **kwargs):
-      nonlocal partial_args, partial_kwargs, all_unsupplied, unsupplied_arg_positions 
-      _partial_args = list(partial_args).copy()
-      _partial_kwargs = partial_kwargs.copy()
-      _unsupplied_arg_positions = unsupplied_arg_positions.copy()
-      _partial_args = list(args) if all_unsupplied else list(_partial_args)
-      for i, arg in zip(_unsupplied_arg_positions, args):
-        _partial_args[i] = arg
-      for key, value in kwargs.items():
-        _partial_kwargs[key] = value
-      _partial_args, _partial_kwargs = _reinsert_kwargs(fn, _partial_args, _partial_kwargs)
-      _partial_args = tuple(_partial_args)
-      return fn(*_partial_args, **_partial_kwargs)
-    h.__signature__ = new_sig 
-    h.__wrapped__.__signature__ = new_sig 
-    return h
-    g.__signature__ = signature(f)
-    g.__wrapped__.__signature__ = signature(f)
-  return g
-
-
-if __name__ == '__main__':
-  @partial 
-  def f(x, y, z):
-    return x, y, z
+      outer_filling = mark_not_filled_as_placeholders(outer_filling)
+      partial_args = partial_args[:-1]
   
-  print(signature(f))
-  g = f(..., y=2)
-  print(signature(g))
-  # print(g(1, 3))
-  print(signature(g))
+    outer_filling = update_filling(outer_filling, outer_binding, partial_args, partial_kwargs)
+    raise_if_missing_argument(outer_filling)
 
-  h = g(..., z=3)
-  print(signature(h))
-  print(h(1))
+    if is_filling_complete(outer_filling):
+      filled_args, filled_kwargs = filling_to_args_kwargs(outer_filling, outer_binding)
+      return f(*filled_args, **filled_kwargs)    
+
+    inner_sig = create_partial_signature(outer_sig, outer_binding, outer_filling)
+    inner_binding = create_binding(inner_sig)
+    def h(*args, **kwargs):
+      # use the inner binding to update the filling
+      updated_filling = update_filling(outer_filling, inner_binding, args, kwargs)
+      # use the outer binding to get the args / kwargs from the filling
+      filled_args, filled_kwargs = filling_to_args_kwargs(updated_filling, outer_binding)
+      return f(*filled_args, **filled_kwargs)
+    h.__signature__ = inner_sig
+    return partial(h) 
+    g.__signature__ = outer_sig
+  return g
