@@ -6,73 +6,52 @@ Install with:
 pip install better-partial
 ```
 
-I find `functools.partial` unintuitive so I coded up a better version. Let's play around with it. You apply it as a decorator to your functions:
+My library provides both a more ergonomic and expressive way of partially applying functions than `functools.partial`.  We begin by decorating a function with our `partial` operator. Let's consider the following function:
 
 ```python
-import better_partial as bp
+from better_partial import partial, _
+# Note that "_" can be imported under a different name if it clashes with your conventions
 
-@bp.partial
-def some_operation(x, p1, p2):
-  return (x + p1) * p2
-```
-
-On the surface nothing really changes. `some_operation` behaves just like a normal function when you pass it values
-
-```python
-some_operation(1, 2, 3)  # --> 9
-```
-
-but under the hood my `partial` decorator is working all kinds of magic. Imagine you need to pass a function of `x` to some other part of your codebase and `some_operation`, with a particular setting of `p1 = 10` and `p2 = 20`, fits the bill. In order to make this work, you'd have to wrap `some_operation` like this:
-
-```python
-func = lambda x: some_operation(x, 10, 20)
-```
-
-or this
-
-```python
-def func(x):
-  return some_operation(x, 10, 20)
-```
-
-The `bp.partial` decorator makes this a bit nicer. By supplying a `bp._` placeholder for any argument in `some_operation` we can produce a new function where the variables replaced by `bp._` are omitted:
-```python
-func = some_operation(bp._, 10, 20)
-func(x) == some_operation(x, 10, 20)  # --> True
-```
-
-You can replace any positional arguments with `bp._` to perform partial function applications
-```python
-@bp.partial
+@partial
 def f(a, b, c, d, e):
-  return a + b + c + d + e
-  
-g = f(bp._, 0, bp._, 0, bp._)
-g(1, 3, 5)  # --> 1 + 0 + 3 + 0 + 5
+  return a, b, c, d, e
 ```
 
-The functions produced by these partial applications also support further partial application. Consider using the `g` from above again:
+We can then evaluate `f` like a standard function:
 ```python
-h = g(1, bp._, bp._)
-h(3, 5)  # --> 1 + 0 + 3 + 0 + 5
+f(1, 2, 3, 4, 5) # --> (1, 2, 3, 4, 5)
 ```
-
-This is great if you want to omit a few parameters and specify the rest, but what if it's the other way around? You just want to fix the values of a few parameters. `better_partial` lets you do this. Consider `f` from above and suppose that we want to fix `c = 5` and `a = 7`, you can do this too:
+but under the hood, my decorator now enables partial applications of `f`. Suppose we wanted to produce a function with all of `f`'s arguments fixed except for `c`. We can accomplish this via the placeholder `_` as follows:
 ```python
-g = f(..., c=5, a=7)
-
-g(0, 0, 0)  # --> 7 + 0 + 5 + 0 + 0
-g(0, 0, 0) == f(7, 0, 5, 0, 0) == f(7, bp._, 5, bp._, bp._)(0, 0, 0)  # --> True
+g = f(1, 2, _, 3, 4)
+g(3) # --> (1, 2, 3, 4, 5)
 ```
 
-`better_partial` lets you use the `...` sentenel to indicate that you _only_ want to specify the values of what follows.
-
-An easy way to appreciate the flexibility and power of the `partial` operator is to see the variety of ways you can evaluate functions with it. Using the definition of `f` from above, all of the following lines are equivalent:
-
+Alternatively, we might want to produce a function in which *only* `c` is specified. We can accomplish this using `...`:
 ```python
-f(1,2,3,4,5)
-f(bp._, 2, bp._, 4, bp._)(1, 3, 5)
-f(..., b=2, d=4)(1, 3, 5)
-f(..., b=2, d=4)(1, bp._, 5)(3)
-f(..., b=2, d=4)(..., c=3)(1, 5)
+g = f(..., c=3)
+g(1, 2, 4, 5) # --> (1, 2, 3, 4, 5)
 ```
+
+`...` must be specified as the last positional argument and indicates that all following positional arguments should be treated as placeholders. This means that we can specify `a` and `d` as follows:
+```python
+g = f(1, ..., d=4)
+g(2, 3, 5) # --> (1, 2, 3, 4, 5)
+```
+
+The functions returned by partial applications are themselves partially applicable:
+```python
+g = f(..., e=5)
+h = g(_, 2, 3, 4)
+h(1) # --> (1, 2, 3, 4, 5)
+```
+
+This enables a diversity of ways to partially apply functions. Consider the following equivalent expressions for `(1, 2, 3, 4, 5)`:
+```python
+f(1, 2, 3, 4, 5)
+f(_, 2, _, 4, _)(1, 3, 5)
+f(..., e=5)(..., d=4)(1, 2, 3)
+f(1, ..., e=5)(2, ..., d=4)(3)
+f(_, _, _, _, _)(1, 2, 3, 4, 5)
+```
+
