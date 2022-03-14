@@ -50,6 +50,7 @@ This enables a diversity of ways to partially apply functions. Consider the foll
 ```python
 f(1, 2, 3, 4, 5)
 f(_, 2, _, 4, _)(1, 3, 5)
+f(1, _, 3, ...)(4, 5)
 f(..., e=5)(..., d=4)(1, 2, 3)
 f(1, ..., e=5)(2, ..., d=4)(3)
 f(..., e=5)(..., d=4)(..., c=3)(..., b=2)(..., a=1)
