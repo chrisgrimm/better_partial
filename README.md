@@ -23,7 +23,7 @@ f(1, 2, 3, 4, 5) # --> (1, 2, 3, 4, 5)
 ```
 but under the hood, my decorator now enables partial applications of `f`. Suppose we wanted to produce a function with all of `f`'s arguments fixed except for `c`. We can accomplish this via the placeholder `_` as follows:
 ```python
-g = f(1, 2, _, 3, 4)
+g = f(1, 2, _, 4, 5)
 g(3) # --> (1, 2, 3, 4, 5)
 ```
 
